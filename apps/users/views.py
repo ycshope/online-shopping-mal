@@ -1,6 +1,7 @@
 import imp
 import json
 import re
+from email import message
 from itertools import count
 from urllib import response
 
@@ -243,6 +244,47 @@ class EmailView(LoginRequiredJSONMixin, View):
         print(f"check email success....")
 
         #3. 发送一封激活邮件
+        # from django.core.mail import send_mail
+        subject = '美多商城激活邮件'
+        message = ""
+        # NOTE:格式不能改,必须是xxx<email>
+        from_email = '美多商城<wyycshope@163.com>'
+        # 邮件的内容如果是 html 这个时候使用 html_message
+        html_message = "激活链接仅有效5分钟,请尽快点击"
+
+        #3.1接收邮件
+        recipient_list = [email]
+
+        #3.2生成邮件的激活地址
+        from apps.users.utils import decrypt_userid, generic_email_verify_token
+        token = generic_email_verify_token(request.user.id)
+        print(f"token={token}")
+
+        verify_url = f"http://www.meiduo.site:8080/success_verify_email.html?token={token}"
+        # 4.2 组织我们的激活邮件
+        html_message = '<p>尊敬的用户您好！</p>' \
+                       '<p>感谢您使用美多商城。</p>' \
+                       f'<p>您的邮箱为：{email} 。请点击此链接激活您的邮箱：</p>' \
+                       f'<p><a href="{verify_url}">{verify_url}<a></p>'
+
+        #3.2发送邮件
+        # send_mail(subject=subject,
+        #           message=message,
+        #           from_email=from_email,
+        #           html_message=html_message,
+        #           recipient_list=recipient_list)
+        # celery消息队列异步实现发送邮件
+        # 激活woker:
+        # cd ..;celery -A celery_tasks.main worker -l INFO
+        from celery_tasks.email.tasks import celery_send_email
+
+        # delay 的参数 等同于 任务（函数）的参数
+        celery_send_email.delay(subject=subject,
+                                message=message,
+                                from_email=from_email,
+                                html_message=html_message,
+                                recipient_list=recipient_list)
+
         #4. 保存邮箱地址
         #5. 返回响应
         return JsonResponse({'code': 0, 'errmsg': 'ok'})
