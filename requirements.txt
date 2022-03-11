@@ -2,7 +2,7 @@ Django==3.2.5
 PyMySQL==1.0.2
 mysqlclient==2.0.3
 django-redis==4.12.1
-celery==5.0.0
+celery==5.2.2
 django-cors-headers==3.11.0
 pillow==9.0.1
 QQLoginTool==0.3.0
