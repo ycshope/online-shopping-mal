@@ -18,8 +18,9 @@ from sqlite3 import register_converter
 
 from django.urls import path
 
-from apps.users.views import (CenterView, EmailView, LoginView, LogoutView,
-                              RegisterView, UsernameCountView)
+from apps.users.views import (CenterView, EmailVerifyView, EmailView,
+                              LoginView, LogoutView, RegisterView,
+                              UsernameCountView)
 
 urlpatterns = [
     path('usernames/<username:username>/count/', UsernameCountView.as_view()),
@@ -28,4 +29,5 @@ urlpatterns = [
     path('logout/', LogoutView.as_view()),
     path('info/', CenterView.as_view()),
     path('emails/', EmailView.as_view()),
+    path('emails/verification/', EmailVerifyView.as_view()),
 ]

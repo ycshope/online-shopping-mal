@@ -43,7 +43,7 @@
             created: function(){
                 // window.location.search
                 // ?token=xxxxx
-                axios.put(this.host+'/emails/verification/'+ window.location.search,{
+                axios.get(this.host+'/emails/verification/'+ window.location.search,{
                     responseType: 'json',
                     withCredentials:true,
                 })

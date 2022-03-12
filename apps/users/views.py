@@ -214,8 +214,8 @@ class CenterView(LoginRequiredJSONMixin, View):
     步骤
         1. 接收请求
         2. 获取数据
-        3. 发送一封激活邮件
-        4. 保存邮箱地址
+        3. 保存邮箱地址
+        4. 发送一封激活邮件
         5. 返回响应
         
 
@@ -243,7 +243,14 @@ class EmailView(LoginRequiredJSONMixin, View):
             return JsonResponse({'code': 400, 'errmsg': '邮箱不满足规则'})
         print(f"check email success....")
 
-        #3. 发送一封激活邮件
+        # 3. 保存邮箱地址
+        user = request.user
+        # user / request.user 就是　登录用户的　实例对象
+        # user --> User
+        user.email = email
+        user.save()
+
+        #4. 发送一封激活邮件
         # from django.core.mail import send_mail
         subject = '美多商城激活邮件'
         message = ""
@@ -252,22 +259,22 @@ class EmailView(LoginRequiredJSONMixin, View):
         # 邮件的内容如果是 html 这个时候使用 html_message
         html_message = "激活链接仅有效5分钟,请尽快点击"
 
-        #3.1接收邮件
+        #5.1接收邮件
         recipient_list = [email]
 
-        #3.2生成邮件的激活地址
-        from apps.users.utils import decrypt_userid, generic_email_verify_token
+        #5.2生成邮件的激活地址
+        from apps.users.utils import generic_email_verify_token
         token = generic_email_verify_token(request.user.id)
         print(f"token={token}")
 
         verify_url = f"http://www.meiduo.site:8080/success_verify_email.html?token={token}"
-        # 4.2 组织我们的激活邮件
+        # 5.2 组织我们的激活邮件
         html_message = '<p>尊敬的用户您好！</p>' \
                        '<p>感谢您使用美多商城。</p>' \
                        f'<p>您的邮箱为：{email} 。请点击此链接激活您的邮箱：</p>' \
                        f'<p><a href="{verify_url}">{verify_url}<a></p>'
 
-        #3.2发送邮件
+        #5.2发送邮件
         # send_mail(subject=subject,
         #           message=message,
         #           from_email=from_email,
@@ -275,7 +282,7 @@ class EmailView(LoginRequiredJSONMixin, View):
         #           recipient_list=recipient_list)
         # celery消息队列异步实现发送邮件
         # 激活woker:
-        # cd ..;celery -A celery_tasks.main worker -l INFO
+        # cd /code/;celery -A celery_tasks.main worker -l INFO
         from celery_tasks.email.tasks import celery_send_email
 
         # delay 的参数 等同于 任务（函数）的参数
@@ -285,6 +292,62 @@ class EmailView(LoginRequiredJSONMixin, View):
                                 html_message=html_message,
                                 recipient_list=recipient_list)
 
-        #4. 保存邮箱地址
-        #5. 返回响应
+        #6. 返回响应
+        return JsonResponse({'code': 0, 'errmsg': 'ok'})
+
+
+'''
+4. 邮件激活:
+请求           接收请求，获取token参数
+业务逻辑        v1:   1.根据token确定用户 2.数据库写入用户的邮箱
+               v2:    1.根据token确定用户 2.让用户输入账号密码进行多因素认证 3.确定token,用户名,密码符合才允许绑定
+响应           JSON  code=0
+
+路由          get /emails/verification/?token={token}
+步骤
+    1. 接收请求
+    2. 获取数据,过滤数据
+    3. 根据token获取userid
+    4. mysql邮箱激活位设置
+    5. 返回响应
+
+5. 保存邮箱地址
+#6. 返回响应
+'''
+
+
+class EmailVerifyView(View):
+    def get(get, request):
+        # 1. 接收请求
+        # BUG:前端错误返回没处理好
+        token = request.GET.get('token')
+
+        #  2. 获取数据,过滤数据
+        if token is None:
+            return JsonResponse({'code': 400, 'errmsg': '请补全参数'})
+
+        print(f"get token sucess...")
+        print(f"token={token}")
+        #WARINIG:是否需要匹配token的正则表达式?
+
+        from apps.users.utils import check_email_verify_token
+
+        #   3. 根据token获取userid
+        userid = check_email_verify_token(token)
+        if userid is None:
+            return JsonResponse({'code': 400, 'errmsg': '验证邮箱过期或验证邮箱不正确'})
+
+        print(f"get userid sucess...")
+        print(f"userid={userid}")
+
+        #   4. mysql邮箱激活位设置
+        user = User.objects.get(id=userid)
+
+        #   5.修改数据
+        user.email_active=True
+        user.save()
+        print(f"email active sucess...")
+
+
+        #   6. 返回响应
         return JsonResponse({'code': 0, 'errmsg': 'ok'})

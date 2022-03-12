@@ -11,7 +11,7 @@ def generic_email_verify_token(userid):
     return access_token.decode()
 
 
-def decrypt_userid(token):
+def check_email_verify_token(token):
     # s = Serializer(secret_key=SECRET_KEY, expires_in=60)
     s = Serializer(secret_key=settings.SECRET_KEY, expires_in=EXPRIRES_IN)
     try:
@@ -23,7 +23,7 @@ def decrypt_userid(token):
 
 
 if __name__ == "__main__":
-    context = encrypt_userid('123456')
+    context = generic_email_verify_token('123456')
     print(context)
     # time.sleep(1.9)
-    print(decrypt_userid(context))
+    print(check_email_verify_token(context))

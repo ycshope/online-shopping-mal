@@ -1,0 +1,12 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+#settings 
+settings.py
+settings.py.bak
+
+#db
+logs/*
+db_data/*
+
+#need verifications.view 
