@@ -90,7 +90,7 @@ class RegisterView(View):
         #5.返回请求
         return JsonResponse({'code': 0, 'errmsg': 'ok'})
 
-
+#TODO:修改密码
 class LoginView(View):
     def post(self, request):
 
@@ -378,6 +378,7 @@ class EmailVerifyView(View):
 
 
 #BUG:水平越权,没有通过sessionid校验用户的身份导致任意查询
+#TODO:修改默认地址,删除地址,设置默认地址,修改地址标题
 class AddressView(LoginRequiredJSONMixin, View):
     def get(self, request):
         print(f"GET address obj success...")
