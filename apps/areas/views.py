@@ -101,7 +101,7 @@ class SubAreaView(View):
                 print("get down_level from db...")
                 cache.set(f'down_level:{id}', down_level, 24 * 3600)
         else:
-            print('\033[1;32;0mget down_level from cache... \033[0m')
+            print('get down_level from cache...')
 
         print("get SubArea success...")
         print(f"up_level={up_level},down_level={down_level}")
