@@ -169,7 +169,7 @@ var vm = new Vue({
                 this.form_address.title = this.form_address.receiver;
                 if (this.editing_address_index === '') {
                     // 新增地址
-                    var url = this.host + '/addresses/create/'
+                    var url = this.host + '/addresses/'
                     axios.post(url, this.form_address, {
                         responseType: 'json',
                         withCredentials: true
