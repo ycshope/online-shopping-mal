@@ -10,7 +10,7 @@ from django.shortcuts import render
 # Create your views here.
 from django.views import View
 
-from apps.users.models import User
+from apps.users.models import Address, User
 
 
 class UsernameCountView(View):
@@ -316,8 +316,9 @@ class EmailView(LoginRequiredJSONMixin, View):
 '''
 
 
+#BUG:需要二次验证
 class EmailVerifyView(View):
-    def get(get, request):
+    def get(self, request):
         # 1. 接收请求
         # BUG:前端错误返回没处理好
         token = request.GET.get('token')
@@ -344,10 +345,129 @@ class EmailVerifyView(View):
         user = User.objects.get(id=userid)
 
         #   5.修改数据
-        user.email_active=True
+        user.email_active = True
         user.save()
         print(f"email active sucess...")
 
-
         #   6. 返回响应
         return JsonResponse({'code': 0, 'errmsg': 'ok'})
+
+
+"""
+需求：     1.保存收获地址
+
+前端：
+    当用户输入保存收获地址之后，点击保存。这个时候会发送axios请求。
+    
+后端：
+    请求           接收请求，获取数据
+    业务逻辑       过滤输入,如果只有一个地址则为默认,保存数据
+    响应           JSON  code=0,    response.data.address;  is_show_edit
+    
+    路由          POST   /addresses/
+    步骤
+        1. 接收请求
+        2. 获取数据
+        3. 过滤输入
+        4. 判断是否有默认地址
+        5. 保存数据
+        6. 返回数据
+        
+
+"""
+
+
+#BUG:水平越权,没有通过sessionid校验用户的身份导致任意查询
+class AddressView(LoginRequiredJSONMixin, View):
+    # def get(self, request):
+    #     pass
+    # return JsonResponse({'code': 0, 'errmsg': 'ok','address':{}})
+
+    #新增收获地址
+    def post(self, request):
+        #0.超过20个地址不然新建
+
+        # 1. 接收请求
+        data = json.loads(request.body.decode())
+        print(f"get address obj success....data={data}")
+
+        # 2. 获取数据
+        receiver = data.get('receiver')
+        mobile = data.get('mobile')
+        province_id = data.get('province_id')
+        city_id = data.get('city_id')
+        district_id = data.get('district_id')
+        place = data.get('place')
+        title = data.get('title')  # 非必须
+        email = data.get('email')  # 非必须
+        tel = data.get('tel')  # 非必须
+
+        # 3. 过滤输入
+        # 3.1 校验必选字段:收件人,收获地址,手机
+        if not all([
+                receiver, mobile, province_id, city_id, district_id, place,
+                title
+        ]):
+            return JsonResponse({'code': 400, 'errmsg': '请补全必须参数:收件人,收获地址,手机'})
+        # 3.2 各个字段的过滤
+        # ERROR:收件人,地址暂时先不过滤(数据类型+正则表达式)
+        if not re.match('^1[345789]\d{9}$', mobile):
+            return JsonResponse({'code': 400, 'errmsg': '手机号码不满足规则'})
+        print(f"check necessarily pram success...")
+
+        # 4. 保存数据
+        # ERROR:其他校验暂时未做,地址暂时先不过滤(数据类型+正则表达式)
+        #4.1取出非必选字段邮箱,做校验,电话号码
+        if email:
+            if not re.match(
+                    '^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$',
+                    email):
+                return JsonResponse({'code': 400, 'errmsg': '邮箱地址不满足规则'})
+
+        print(f"check option param success...")
+
+        # 4.2存储数据
+        from apps.areas.models import Area
+        user = request.user
+        print(f"user={user}")
+
+        #FIXED:ValueError: Cannot assign "110000": "Address.province" must be a "Area" instance.
+        try:
+            address = Address.objects.create(
+                user=user,
+                title=title,
+                receiver=receiver,
+                province=Area.objects.get(id=province_id),
+                city=Area.objects.get(id=city_id),
+                district=Area.objects.get(id=district_id),
+                place=place,
+                mobile=mobile,
+                email=email,
+                tel=tel)
+        except Exception as e:
+            print('ADD address error...')
+            return JsonResponse({'code': 400, 'errmsg': '邮箱地址不满足规则'})
+
+        #BUG:数据库编码问题导致无法显示
+        #REF:https://www.cnblogs.com/carry-2017/p/10988212.html
+        address_dict = {
+            'id': address.id,
+            "title": address.title,
+            "receiver": address.receiver,
+            "province": address.province.name,
+            "city": address.city.name,
+            "district": address.district.name,
+            "place": address.place,
+            "mobile": address.mobile,
+            "tel": address.tel,
+            "email": address.email
+        }
+        print(f"ADD address success...")
+        print(f"addres={address_dict}")
+
+        # 5. 返回数据
+        return JsonResponse({
+            'code': 0,
+            'errmsg': 'ok',
+            'address': address_dict
+        })
