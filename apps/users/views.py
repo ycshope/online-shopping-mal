@@ -379,13 +379,47 @@ class EmailVerifyView(View):
 
 #BUG:水平越权,没有通过sessionid校验用户的身份导致任意查询
 class AddressView(LoginRequiredJSONMixin, View):
-    # def get(self, request):
-    #     pass
-    # return JsonResponse({'code': 0, 'errmsg': 'ok','address':{}})
+    def get(self, request):
+        print(f"GET address obj success...")
+        user = request.user
+        print(f"user={user}")
+
+        #1.查询指定数据
+        #注意结果是多个
+        try:
+            address_list_obj = Address.objects.filter(user=user,
+                                                      is_deleted=False)
+        except Exception as e:
+            print('get user address  list error...')
+            return JsonResponse({'code': 400, 'errmsg': '查询收获地址失败'})
+        print(f"get user address list success")
+
+        #2.将来对象数据转换为字典数据
+        address_list_dict = [{
+            'id': address_obj.id,
+            "title": address_obj.title,
+            "receiver": address_obj.receiver,
+            "province": address_obj.province.name,
+            "city": address_obj.city.name,
+            "district": address_obj.district.name,
+            "place": address_obj.place,
+            "mobile": address_obj.mobile,
+            "tel": address_obj.tel,
+            "email": address_obj.email
+        } for address_obj in address_list_obj]
+        print(f"convert address list obj to address list dict success...")
+
+        #3.返回响应
+        return JsonResponse({
+            'code': 0,
+            'errmsg': 'ok',
+            'addresses': address_list_dict
+        })
 
     #新增收获地址
     def post(self, request):
         #0.超过20个地址不然新建
+        print(f"POST address obj success...")
 
         # 1. 接收请求
         data = json.loads(request.body.decode())
