@@ -14,10 +14,12 @@ services:
       MYSQL_PASSWORD: meiduo
     # ports:
     #   - "3306:3306"
+
   redis:
     image: redis
     # ports:
     #   - "6379:6379"
+
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
@@ -28,3 +30,27 @@ services:
     depends_on:
       - db
       - redis
+      - fdfs-worker
+
+  #fastdfs as file storage system
+  fdfs-tracker:
+    image: delron/fastdfs
+    command: tracker
+    volumes:
+      - ./fdfs/tracker:/var/tracker
+    restart: always
+    environment:
+      GROUP_NAME: group1
+
+  fdfs-worker:
+    image: delron/fastdfs
+    command: storage
+    volumes:
+      - ./fdfs/storage:/var/storage
+    environment:
+      TRACKER_SERVER: meiduo-fdfs-tracker-1:22122
+    restart: always
+    depends_on:
+      - fdfs-tracker
+    # ports:
+    #   - "8888:8888"
