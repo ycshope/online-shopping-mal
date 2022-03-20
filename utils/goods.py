@@ -1,101 +1,129 @@
+from collections import OrderedDict
+from apps.goods.models import GoodsCategory
+from apps.goods.models import GoodsChannel
+
 """
 分类数据
 """
-from typing import OrderedDict
-
-from apps.goods.models import GoodsCategory, GoodsChannel
-
-
-#TODO:1.利用缓存提高查询效率 2.代码的逻辑不易维护,需要重构
 def get_categories():
-    
-    # 1.先取出所有的一级category,按照group_id,sequence排序
+
+    # 定义一个有序字典对象
     categories = OrderedDict()
-    channels = GoodsChannel.objects.order_by('group_id', 'sequence')
-    #  <QuerySet [<GoodsChannel: 手机>, <GoodsChannel: 相机>, <GoodsChannel: 数码>,
-    # <GoodsChannel: 电脑>, <GoodsChannel: 办公>, <GoodsChannel: 家用电器>,
-    # <GoodsChannel: 家居>, <GoodsChannel: 家具>, <GoodsChannel: 家装>,
-    #  <GoodsChannel: 厨具>, <GoodsChannel: 男装>, <GoodsChannel: 女装>,
-    # <GoodsChannel: 童装>, <GoodsChannel: 内衣>, <GoodsChannel: 女鞋>,
-    # <GoodsChannel: 箱包>, <GoodsChannel: 钟表>, <GoodsChannel: 珠宝>,
-    # <GoodsChannel: 男鞋>, <GoodsChannel: 运动>, '...(remaining elements truncated)...']>
-    print("order_by channels sucess...")
-    print(f"channels={channels}")
 
+    # 对 GoodsChannel 进行 group_id 和 sequence 排序, 获取排序后的结果:
+    channels = GoodsChannel.objects.order_by('group_id',
+                                             'sequence')
+
+    # 遍历排序后的结果: 得到所有的一级菜单( 即,频道 )
     for channel in channels:
-        #2.生成一级目录
-
-        #2.1 取出group_id
-        # print(f"channel={channel}")  # channel=手机
+        # 从频道中得到当前的 组id
         group_id = channel.group_id
-        # print(f"group_id={group_id}")  # group_id=1
 
-        #2.2 如果字典没有key=group_id,那就生成新的字典
+        # 判断: 如果当前 组id 不在我们的有序字典中:
         if group_id not in categories:
-            categories[group_id] = {"channels": [], "sub_cats": []}
+            # 我们就把 组id 添加到 有序字典中
+            # 并且作为 key值, value值 是 {'channels': [], 'sub_cats': []}
+            categories[group_id] =  {
+                                     'channels': [],
+                                     'sub_cats': []
+                                    }
 
-        #2.3. 取出id,name,url作为一级目录的对象
-        category_id = channel.category_id
-        # print(f"category_id={category_id}")  # category_id=1
+        # 获取当前频道的分类名称
+        cat1 = channel.category
 
-        url = channel.url
-        # print(f"url={url}")  #url=http://shouji.jd.com
+        # 给刚刚创建的字典中, 追加具体信息:
+        # 即, 给'channels' 后面的 [] 里面添加如下的信息:
+        categories[group_id]['channels'].append({
+            'id':   cat1.id,
+            'name': cat1.name,
+            'url':  channel.url
+        })
 
-        try:
-            category = GoodsCategory.objects.get(id=category_id)
-        except Exception as e:
-            print("create channel_obj error!!!")
-            # return JsonResponse({'code': 400, 'errmsg': '一级目录名获取失败'})
+        # 根据 cat1 的外键反向, 获取下一级(二级菜单)的所有分类数据, 并遍历:
+        cat2s = GoodsCategory.objects.filter(parent=cat1)
+        # cat1.goodscategory_set.all()
+        for cat2 in cat2s:
+            # 创建一个新的列表:
+            cat2.sub_cats = []
+            cat3s = GoodsCategory.objects.filter(parent=cat2)
+            # 根据 cat2 的外键反向, 获取下一级(三级菜单)的所有分类数据, 并遍历:
+            for cat3 in cat3s:
+                # 拼接新的列表: key: 二级菜单名称, value: 三级菜单组成的列表
+                cat2.sub_cats.append(cat3)
+            # 所有内容在增加到 一级菜单生成的 有序字典中去:
+            categories[group_id]['sub_cats'].append(cat2)
 
-        name = category.name
-        # print(f"name={name}")  #name=手机
-        channel_obj = {"id": category_id, "name": name, "url": url}
+    return categories
+"""
+面包屑
+"""
+def get_breadcrumb(category):
+    '''接收最低级别的类别, 获取各个类别的名称, 返回'''
 
-        print("create channel_obj success...")
-        # print(f"channel_obj={channel_obj}")
-        categories[group_id]["channels"].append(channel_obj)
+    dict = {
+        'cat1':'',
+        'cat2':'',
+        'cat3':'',
+    }
 
-        #3.生成二级目录
-        #3.1 取出二级目录的id,name
-        try:
-            cat2_list = GoodsCategory.objects.filter(parent_id=category_id)
-        except Exception as e:
-            print("create cat2_obj error!!!")
-            # return JsonResponse({'code': 400, 'errmsg': '二级目录名获取失败'})
+    if category.parent is None:
+        dict['cat1'] = category.name
+    elif category.parent.parent is None:
+        dict['cat2'] = category.name
+        dict['cat1'] = category.parent.name
+    else:
+        dict['cat3'] = category.name
+        dict['cat2'] = category.parent.name
+        dict['cat1'] = category.parent.parent.name
 
-        # print(f"cat2={cat2_list}")
-        #cat2=<QuerySet [<GoodsCategory: 手机通讯>, <GoodsCategory: 手机配件>]>
+    return dict
 
-        for cat2 in cat2_list:
-            cat2_name = cat2.name
-            cat2_id = cat2.id
-            cat2_obj = {"id": cat2_id, "name": cat2_name, "sub_cats": []}
-            print("create cat2_obj success...")
-            print(f"before cat2_obj={cat2_obj}")
+"""
+规格选项
+"""
+def get_goods_specs(sku):
+    # 构建当前商品的规格键
+    sku_specs = sku.specs.order_by('spec_id')
+    sku_key = []
+    for spec in sku_specs:
+        sku_key.append(spec.option.id)
 
-            try:
-                cat3_list = GoodsCategory.objects.filter(parent_id=cat2_id)
-            except Exception as e:
-                print("create cat3_obj error!!!")
-                # return JsonResponse({'code': 400, 'errmsg': '三级目录名获取失败'})
+    # 获取当前商品的所有SKU
+    skus = sku.spu.sku_set.all()
+    # 构建不同规格参数（选项）的sku字典
+    spec_sku_map = {}
+    for s in skus:
+        # 获取sku的规格参数
+        s_specs = s.specs.order_by('spec_id')
+        # 用于形成规格参数-sku字典的键
+        key = []
+        for spec in s_specs:
+            key.append(spec.option.id)
+        # 向规格参数-sku字典添加记录
+        spec_sku_map[tuple(key)] = s.id
 
-            # print(f"cat3={cat3_list}")
+    # 以下代码为：在每个选项上绑定对应的sku_id值
+    # 获取当前商品的规格信息
+    goods_specs = sku.spu.specs.order_by('id')
+    # 若当前sku的规格信息不完整，则不再继续
+    if len(sku_key) < len(goods_specs):
+        return
+    for index, spec in enumerate(goods_specs):
+        # 复制当前sku的规格键
+        key = sku_key[:]
+        # 该规格的选项
+        spec_options = spec.options.all()
+        for option in spec_options:
+            # 在规格参数sku字典中查找符合当前规格的sku
+            key[index] = option.id
+            option.sku_id = spec_sku_map.get(tuple(key))
+        spec.spec_options = spec_options
 
-            #4.生成三级目录
-            for cat3 in cat3_list:
-                cat3_name = cat3.name
-                cat3_id = cat3.id
-                cat3_obj = {
-                    "id": cat3_id,
-                    "name": cat3_name,
-                }
-                # print("create cat3_obj success...")
-                # print(f"cat3_obj={cat3_obj}")
-                cat2_obj['sub_cats'].append(cat3_obj)
+    return goods_specs
 
-            # print(f"cat2_obj={cat2_obj}")
-            categories[group_id]["sub_cats"].append(cat2_obj)
 
-        # print(f"categories={categories[group_id]}")
 
-    print(f"categories={dict(categories)}")
+
+
+
+

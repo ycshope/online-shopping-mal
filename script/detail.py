@@ -14,7 +14,7 @@ import django
 django.setup()
 
 
-from utils.goods import get_categories,get_goods_specs,get_breadcrumb
+from utils.my_goods import get_categories,get_goods_specs,get_breadcrumb
 from apps.goods.models import SKU
 
 def generic_detail_html(sku):
