@@ -39,6 +39,8 @@ services:
     volumes:
       - ./fdfs/tracker:/var/tracker
     restart: always
+    ports:
+      - "8888:8888"
     environment:
       GROUP_NAME: group1
 
