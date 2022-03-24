@@ -12,6 +12,7 @@ db_data/*
 #fdfs
 fdfs/storage/data/*
 fdfs/storage/log/*
+fdfs/tracker/data.tar.gz
 fdfs/tracker/data/*
 fdfs/tracker/log/*
 
