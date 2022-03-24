@@ -37,22 +37,19 @@ services:
     image: delron/fastdfs
     command: tracker
     volumes:
-      - ./fdfs/tracker:/var/tracker
+      - ./fdfs/tracker:/var/fdfs
     restart: always
-    ports:
-      - "8888:8888"
-    environment:
-      GROUP_NAME: group1
 
   fdfs-worker:
     image: delron/fastdfs
     command: storage
     volumes:
-      - ./fdfs/storage:/var/storage
+      - ./fdfs/storage:/var/fdfs
     environment:
       TRACKER_SERVER: meiduo-fdfs-tracker-1:22122
+      GROUP_NAME: group1
     restart: always
     depends_on:
       - fdfs-tracker
-    # ports:
-    #   - "8888:8888"
+    ports:
+      - "8888:8888"

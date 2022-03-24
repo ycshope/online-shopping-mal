@@ -9,4 +9,10 @@ settings.py.bak
 logs/*
 db_data/*
 
+#fdfs
+fdfs/storage/data/*
+fdfs/storage/log/*
+fdfs/tracker/data/*
+fdfs/tracker/log/*
+
 #need verifications.view 

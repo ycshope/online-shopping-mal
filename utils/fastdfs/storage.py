@@ -14,6 +14,12 @@ class MyStorage(Storage):
     def _save(self, name, content):
         pass
 
+    def exists(self, name):
+        # 判断图片是否存在
+        # Fdfs 自己可以实现 图片重名的处理
+        # 返回False 说明图片不存在,就直接上传就可以
+        return False
+
     def url(self, name):
         # return "meiduo-fdfs-tracker-1:8888/"+name
-        return "http://image.meiduo.site:8888/"+name
+        return "http://www.meiduo.site:8888/" + name
