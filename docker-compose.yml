@@ -26,7 +26,7 @@ services:
     volumes:
       - .:/code
     ports:
-      - "8081:8000"
+      - "9000:8000"
     depends_on:
       - db
       - redis
@@ -53,3 +53,12 @@ services:
       - fdfs-tracker
     ports:
       - "8888:8888"
+
+  #Elasticsearch
+  elasticsearch:
+    image: delron/elasticsearch-ik:2.4.6-1.0
+    # volumes:
+    #   - ./elasticsearch/config:/usr/share/elasticsearch/config
+    restart: always
+    ports:
+      - "9200:9200"

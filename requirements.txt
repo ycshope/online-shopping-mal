@@ -8,3 +8,5 @@ pillow==9.0.1
 QQLoginTool==0.3.0
 itsdangerous==1.1.0
 py3Fdfs==2.2.0
+django-haystack==3.1.1
+elasticsearch==2.4.1
