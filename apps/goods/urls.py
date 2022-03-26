@@ -16,10 +16,12 @@ Including another URLconf
 
 from django.urls import path
 
-from apps.goods.views import IndexView, ListView
+from apps.goods.views import DetailView, IndexView, ListView, SKUSearchView
 
 # id需要转换器
 urlpatterns = [
     path('index/', IndexView.as_view()),
     path('list/<category_id>/skus/', ListView.as_view()),
+    path('search/<sku>', SKUSearchView()),
+    path('detail/<sku_id>/', DetailView.as_view()),
 ]

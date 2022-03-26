@@ -1,4 +1,5 @@
 from importlib.resources import contents
+from multiprocessing import context
 from tokenize import group
 from typing import OrderedDict
 from unicodedata import category
@@ -10,7 +11,8 @@ from django.views import View
 from utils.goods import get_breadcrumb, get_categories
 
 from apps.contents.models import ContentCategory
-from apps.goods.models import GoodsCategory, GoodsChannel, GoodsChannelGroup
+from apps.goods.models import (SKU, GoodsCategory, GoodsChannel,
+                               GoodsChannelGroup)
 
 
 # Create your views here.
@@ -101,17 +103,17 @@ class ListView(View):
         # print(f"page_skus.object_list={page_skus.object_list}")
         for sku in page_skus.object_list:
             # print(f"sku={sku.__dict__}")
-            #  sku={'_state': <django.db.models.base.ModelState object at 0x7f2a44578ee0>, 
+            #  sku={'_state': <django.db.models.base.ModelState object at 0x7f2a44578ee0>,
             # 'id': 16,
             #  'create_time': datetime.datetime(2018, 4, 14, 3, 20, 36, 855901, tzinfo=<UTC>),
             #  'update_time': datetime.datetime(2018, 4, 26, 10, 47, 7, 236432, tzinfo=<UTC>),
-            #  'name': '华为 HUAWEI P10 Plus 6GB+128GB 曜石黑 移动联通电信4G手机 双卡双待', 
+            #  'name': '华为 HUAWEI P10 Plus 6GB+128GB 曜石黑 移动联通电信4G手机 双卡双待',
             # 'caption': '666 wifi双天线设计！徕卡人像摄影！P10徕卡双摄拍照，低至2988元！',
-            #  'spu_id': 3, 'category_id': 115, 'price': Decimal('3788.00'), 'cost_price': Decimal('3588.00'), 
-            # 'market_price': Decimal('3888.00'), 
-            # 'stock': 5, 'sales': 0, 'comments': 0, 'is_launched': True, 
+            #  'spu_id': 3, 'category_id': 115, 'price': Decimal('3788.00'), 'cost_price': Decimal('3588.00'),
+            # 'market_price': Decimal('3888.00'),
+            # 'stock': 5, 'sales': 0, 'comments': 0, 'is_launched': True,
             # 'default_image': 'group1/M00/00/02/CtM3BVrRdPeAXNDMAAYJrpessGQ9777651'}
-            # meiduo-web-1    
+            # meiduo-web-1
             sku_list.append({
                 'id': sku.id,
                 'name': sku.name,
@@ -131,5 +133,103 @@ class ListView(View):
             'breadcrumb': breadcrumb
         })
 
+
 #TODO:热销排名
 #基本思路:根据分类来进行销量排名,获取指定字段
+'''
+5. Elasticsearch
+    进行分词操作 
+    分词是指将一句话拆解成多个单字或词，这些字或词便是这句话的关键词
+    
+    下雨天 留客天 天留我不 留
+    
+    
+6. 
+    数据         <----------Haystack--------->             elasticsearch 
+                        
+                        ORM(面向对象操作模型)                 mysql,oracle,sqlite,sql server
+
+ 我们/数据         <----------Haystack--------->             elasticsearch 
+
+ 我们是借助于 haystack 来对接 elasticsearch
+ 所以 haystack 可以帮助我们 查询数据
+'''
+from django.http import JsonResponse
+from haystack.views import SearchView
+
+
+class SKUSearchView(SearchView):
+    def create_response(self):
+        #获取搜索的结果
+        #如何直到里有什么数据呢?
+        #NOTE:用之前必须  python manage.py rebuild_index
+        context = self.get_context()
+        # print(f"context={context}")
+        # {'query': 'HUAWEI', 'form': <ModelSearchForm bound=True, valid=True, fields=(q;models)>,
+        # 'page': <Page 1 of 2>, 'paginator': <django.core.paginator.Paginator object at 0x7fea5d247e20>,
+        # 'suggestion': None}
+        # print(f"type={type(context)}")
+        #type=<class 'dict'>
+        # print(f"keys={context.keys()}")
+        # dict_keys(['query', 'form', 'page', 'paginator', 'suggestion'])
+        # print(f"page={type(context['page'])}")
+        # keys=dict_keys(['query', 'form', 'page', 'paginator', 'suggestion'])
+        # print(f"object_list={context['page'].object_list}")
+        # [<SearchResult: goods.sku (pk=13)>, <SearchResult: goods.sku (pk=14)>]
+        sku_list = []
+        for sku in context['page'].object_list:
+            print(f"sku={sku}")
+            # sku=<SearchResult: goods.sku (pk=13)>
+            # 也就是sku对象
+            sku_list.append({
+                'id': sku.object.id,
+                'name': sku.object.name,
+                'price': sku.object.price,
+                'default_image_url': sku.object.default_image.url,
+                'searchkey': context.get('query'),
+                'page_size': context['page'].paginator.num_pages,
+                'count': context['page'].paginator.count
+            })
+
+        return JsonResponse(sku_list, safe=False)
+
+
+"""
+需求：
+    详情页面
+    
+    1.分类数据
+    2.面包屑
+    3.SKU信息
+    4.规格信息
+    
+    
+    我们的详情页面也是需要静态化实现的。
+    但是我们再讲解静态化之前，应该可以先把 详情页面的数据展示出来
+
+"""
+from utils.goods import get_breadcrumb, get_categories, get_goods_specs
+
+
+class DetailView(View):
+    def get(self, request, sku_id):
+        try:
+            sku = SKU.objects.get(id=sku_id)
+        except SKU.DoesNotExist:
+            pass
+        # 1.分类数据
+        categories = get_categories()
+        # 2.面包屑
+        breadcrumb = get_breadcrumb(sku.category)
+        # 3.SKU信息
+        # 4.规格信息
+        goods_specs = get_goods_specs(sku)
+
+        context = {
+            'categories': categories,
+            'breadcrumb': breadcrumb,
+            'sku': sku,
+            'specs': goods_specs,
+        }
+        print(f"context={context}")
+        return render(request, 'detail.html', context)
