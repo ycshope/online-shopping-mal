@@ -1,21 +1,23 @@
-#!/usr/bin/env python
-
 # ../ 当前目录的上一级目录，也就是 base_dir
+#执行用python执行这个脚本就行
 import sys
+
 sys.path.insert(0, '../')
 
 # 告诉 os 我们的django的配置文件在哪里
 import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "meiduo_mall.settings")
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "meiduo.settings")
 
 # django setup
 # 相当于 当前的文件 有了django的环境
 import django
+
 django.setup()
 
-
-from utils.my_goods import get_categories,get_goods_specs,get_breadcrumb
 from apps.goods.models import SKU
+from utils.goods import get_breadcrumb, get_categories, get_goods_specs
+
 
 def generic_detail_html(sku):
     # try:
@@ -31,34 +33,41 @@ def generic_detail_html(sku):
     goods_specs = get_goods_specs(sku)
 
     context = {
-
         'categories': categories,
         'breadcrumb': breadcrumb,
         'sku': sku,
         'specs': goods_specs,
-
     }
 
     # 1. 加载模板
     from django.template import loader
-    detail_template=loader.get_template('detail.html')
+    detail_template = loader.get_template('detail.html')
     # 2. 模板渲染
-    detail_html_data=detail_template.render(context)
+    detail_html_data = detail_template.render(context)
     # 3. 写入到指定文件
     import os
-    from meiduo_mall import settings
-    file_path=os.path.join(os.path.dirname(settings.BASE_DIR),'front_end_pc/goods/%s.html'%sku.id)
 
-    with open(file_path,'w',encoding='utf-8') as f:
+    from meiduo import settings
+    file_path = os.path.join(settings.BASE_DIR,
+                             'front_end_pc/goods/%s.html' % sku.id)
+
+    # with open(file_path, 'w', encoding='utf-8') as f:
+    #     f.write(detail_html_data)
+    try:
+        f = open(file_path, 'w', encoding='utf-8')
+    except Exception as e:
+        print("write index error!!!")
+    else:
+        print("write index success...")
+        print(f"file_path={file_path}")
         f.write(detail_html_data)
 
     print(sku.id)
 
 
-skus=SKU.objects.all()
+skus = SKU.objects.all()
 for sku in skus:
     generic_detail_html(sku)
-
 """
 详情页面 与 首页不同
 详情页面的内容变化比较少。一般也就是修改商品的价格
