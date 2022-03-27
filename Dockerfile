@@ -7,7 +7,7 @@ WORKDIR /code
 COPY requirements.txt /code/
 COPY deploy.py /code/
 
-RUN apt-get update && apt-get install vim -y \
+RUN apt-get update && apt-get install vim -y && apt-get install cron -y\
     && pip install --upgrade pip && pip3 install -r requirements.txt
 
 # RUN python deploy.py
