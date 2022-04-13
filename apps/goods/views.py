@@ -153,6 +153,8 @@ class ListView(View):
 
  我们是借助于 haystack 来对接 elasticsearch
  所以 haystack 可以帮助我们 查询数据
+
+ 在虚拟环境下 python manage.py rebuild_index
 '''
 from django.http import JsonResponse
 from haystack.views import SearchView
