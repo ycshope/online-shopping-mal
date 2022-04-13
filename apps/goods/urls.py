@@ -22,6 +22,6 @@ from apps.goods.views import DetailView, IndexView, ListView, SKUSearchView
 urlpatterns = [
     path('index/', IndexView.as_view()),
     path('list/<category_id>/skus/', ListView.as_view()),
-    path('search/<sku>', SKUSearchView()),
+    path('search/', SKUSearchView()),
     path('detail/<sku_id>/', DetailView.as_view()),
 ]

@@ -99,7 +99,7 @@ class LoginView(View):
         body_bytes = request.body
         body_str = body_bytes.decode()
         body_dict = json.loads(body_str)
-
+        
         #2.业务逻辑:验证用户名和密码是否正确,session,判断是否记住登录
         #2.1获取数据
         username = body_dict.get('username')

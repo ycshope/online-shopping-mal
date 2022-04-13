@@ -164,7 +164,7 @@ class SKUSearchView(SearchView):
         #如何直到里有什么数据呢?
         #NOTE:用之前必须  python manage.py rebuild_index
         context = self.get_context()
-        # print(f"context={context}")
+        print(f"context={context}")
         # {'query': 'HUAWEI', 'form': <ModelSearchForm bound=True, valid=True, fields=(q;models)>,
         # 'page': <Page 1 of 2>, 'paginator': <django.core.paginator.Paginator object at 0x7fea5d247e20>,
         # 'suggestion': None}

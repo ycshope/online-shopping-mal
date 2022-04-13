@@ -2,7 +2,6 @@ from urllib import response
 
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-
 """
 Create your views here.
 3.1 准备工作                        -----------------------------------准备好了
