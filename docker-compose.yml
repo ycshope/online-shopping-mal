@@ -26,33 +26,33 @@ services:
     volumes:
       - .:/code
     ports:
-      - "9000:8000"
+      - "22345:8000"
     depends_on:
       - db
       - redis
-      - fdfs-worker
+      # - fdfs-worker
 
   #fastdfs as file storage system
-  fdfs-tracker:
-    image: delron/fastdfs
-    command: tracker
-    volumes:
-      - ./fdfs/tracker:/var/fdfs
-    restart: always
+  # fdfs-tracker:
+  #   image: delron/fastdfs
+  #   command: tracker
+  #   volumes:
+  #     - ./fdfs/tracker:/var/fdfs
+  #   restart: always
 
-  fdfs-worker:
-    image: delron/fastdfs
-    command: storage
-    volumes:
-      - ./fdfs/storage:/var/fdfs
-    environment:
-      TRACKER_SERVER: meiduo-fdfs-tracker-1:22122
-      GROUP_NAME: group1
-    restart: always
-    depends_on:
-      - fdfs-tracker
-    ports:
-      - "8888:8888"
+  # fdfs-worker:
+  #   image: delron/fastdfs
+  #   command: storage
+  #   volumes:
+  #     - ./fdfs/storage:/var/fdfs
+  #   environment:
+  #     TRACKER_SERVER: meiduo-fdfs-tracker-1:22122
+  #     GROUP_NAME: group1
+  #   restart: always
+  #   depends_on:
+  #     - fdfs-tracker
+    # ports:
+    #   - "8888:8888"
 
   #Elasticsearch
   elasticsearch:
@@ -60,5 +60,5 @@ services:
     # volumes:
     #   - ./elasticsearch/config:/usr/share/elasticsearch/config
     restart: always
-    ports:
-      - "9200:9200"
+    # ports:
+    #   - "9200:9200"
