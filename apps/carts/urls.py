@@ -14,19 +14,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
-# 在主目录注册转换器,那么全局都知道这个变量
-from django.urls import include, path, register_converter
-from utils.converters import UsernameConverter, UUIDConverter
+from django.urls import path
 
-register_converter(UsernameConverter, 'username')
-register_converter(UUIDConverter, 'uuid')
+from apps.carts.views import CartsView
+
+# id需要转换器
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('apps.users.urls')),
-    path('', include('apps.verifications.urls')),
-    path('', include('apps.oauth.urls')),
-    path('', include('apps.areas.urls')),
-    path('', include('apps.goods.urls')),
-    path('', include('apps.carts.urls')),
+    path('carts/', CartsView.as_view()),
 ]
