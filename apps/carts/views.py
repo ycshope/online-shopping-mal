@@ -188,17 +188,23 @@ class CartsView(View):
         user = request.user
         if user.is_authenticated:
             print(f"logined user opt...")
+            # redis:
+            # user_id,sku_id(商品id),count(数量),selected（选中状态）
+
             #4.登录用户保存redis
             try:
                 #4.1 连接redis
                 '''
-                    hash
-                    user_id:
-                            sku_id:count
-                            xxx_sku_id:selected
-                            
-                    1：  
-                            1:10
+                redis:
+                    user_id,sku_id(商品id),count(数量),selected（选中状态）
+                
+                hash
+                user_id:
+                        sku_id:count
+                        xxx_sku_id:selected
+                        
+                1：  
+                        1:10
                 '''
                 redis_cli = get_redis_connection('carts')
                 #4.2 操作hash
@@ -222,7 +228,8 @@ class CartsView(View):
         else:
             print(f"anoyoums user opt...")
             """
-                       
+                cookie:
+                    sku_id,count,selected,
                 cookie:
                     {
                         sku_id: {count:xxx,selected:xxxx},
@@ -282,6 +289,45 @@ class CartsView(View):
             return response
 
     def get(self, request):
+        """
+        前端:
+            提交get请求,并传输cookie
+            将商品sku_id,数量,选中状态取出
+            cart_skus:{
+                sku_id:{
+                    price:x
+                    count:x
+                    selected:
+                }
+            }
+        后端：
+            请求:
+                接收cookie
+            业务逻辑:
+                判断用户是否登录,cookie解密后，查询价格
+            响应:
+                返回sku_id,价格,数量,选中状态
+
+            路由: GET /carts/
+            步骤:
+                1.判断用户是否登录
+                2.用户登录查询redis
+                    2.1 操作hash获取skuid
+                    2.2 操作hash获取count
+                    2.3 操作操作set获取状态sku_id
+                3.未登录用户查询cookie
+                    3.0 解码,校验数据
+                        如果为空返回{}
+                    3.1 获取skuid
+                    3.2 获取count
+                    3.3 获取状态
+                4.根据商品的skuid查询信息
+                    4.1 校验skuid
+                    #TODO:4.2 更新商品信息
+                    4.3 查询价格和库存
+                5.序列化
+                6.返回数据
+        """
         return JsonResponse({
             'code': 0,
             'errmsg': 'ok',
