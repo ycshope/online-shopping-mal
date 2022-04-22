@@ -1,3 +1,5 @@
+from select import select
+
 import redis
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -288,8 +290,7 @@ class CartsView(View):
             #5.5 返回响应
             return response
 
-    def get(self, request):
-        """
+    """
         前端:
             提交get请求,并传输cookie
             将商品sku_id,数量,选中状态取出
@@ -328,6 +329,66 @@ class CartsView(View):
                 5.序列化
                 6.返回数据
         """
+
+    def get(self, request):
+        #  1.判断用户是否登录
+        user = request.user
+        if user.is_authenticated:
+            print(f"get user:{user} carts...")
+
+            redis_cli = get_redis_connection('carts')
+            # #4.3 操作set
+            #         2.用户登录查询redis
+            #             2.1 获取购物车信息 hash
+            sku_id_counts = redis_cli.hgetall(f'carts_{user.id}')
+            print(f"sku_id_counts={sku_id_counts}")
+            #             2.2 获取选中信息 set
+            selectd_ids = redis_cli.smembers(f'selected_{user.id}')
+            print(f"selectd_ids={selectd_ids}")
+
+            #             2.3 将格式转换为和cookie一样
+            carts = {}
+            # cookie_carts={11: {'count': 1, 'selected': True}}
+            # for sku_id, count in sku_id_counts:
+            #     print(f"sku_id={sku_id},count={count}")
+            #     carts[sku_id] = {
+            #         'count': count,
+            #         'selected': sku_id in selectd_ids
+            #     }
+            # pass
+        else:
+            print(f"anonymous user")
+
+            cookie_carts = request.COOKIES.get('carts')
+
+            if cookie_carts:
+                #3.未登录用户查询cookie
+                #3.0 解码,校验数据
+                #    如果为空返回{}
+                try:
+                    carts = pickle.loads(base64.b64decode(cookie_carts))
+                except Exception as e:
+                    print(f"cookie_carts decode error!!!")
+                    return JsonResponse({
+                        'code': 0,
+                        'errmsg': 'cookie 错误!!!',
+                    })
+
+            else:
+                carts = {}
+            print(f"cookie_carts={carts}")
+
+            #3.1 获取skuid
+            #3.2 获取count
+            #3.3 获取状态
+            pass
+
+        # 4.根据商品的skuid查询信息
+        #  4.1 校验skuid
+        #  #TODO:4.2 更新商品信息
+        #   4.3 查询价格和库存
+        #5.序列化
+        #6.返回数据
         return JsonResponse({
             'code': 0,
             'errmsg': 'ok',
