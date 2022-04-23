@@ -319,15 +319,11 @@ class CartsView(View):
                 3.未登录用户查询cookie
                     3.0 解码,校验数据
                         如果为空返回{}
-                    3.1 获取skuid
-                    3.2 获取count
-                    3.3 获取状态
+                    3.1 获取sku_id,count,selected信息
                 4.根据商品的skuid查询信息
                     4.1 校验skuid
-                    #TODO:4.2 更新商品信息
-                    4.3 查询价格和库存
-                5.序列化
-                6.返回数据
+                    4.3 查询skuid的商品信息
+                5.返回数据
         """
 
     def get(self, request):
@@ -337,25 +333,27 @@ class CartsView(View):
             print(f"get user:{user} carts...")
 
             redis_cli = get_redis_connection('carts')
-            # #4.3 操作set
+
             #         2.用户登录查询redis
             #             2.1 获取购物车信息 hash
             sku_id_counts = redis_cli.hgetall(f'carts_{user.id}')
-            print(f"sku_id_counts={sku_id_counts}")
+            # {b'5': b'10', b'8': b'3'}   解读=> {sku_id1:count1,sku_id2:count2...}
+            # print(f"sku_id_counts={sku_id_counts}")
+
             #             2.2 获取选中信息 set
             selectd_ids = redis_cli.smembers(f'selected_{user.id}')
-            print(f"selectd_ids={selectd_ids}")
+            # {b'5', b'8'}
+            # print(f"selectd_ids={selectd_ids}")
 
             #             2.3 将格式转换为和cookie一样
             carts = {}
             # cookie_carts={11: {'count': 1, 'selected': True}}
-            # for sku_id, count in sku_id_counts:
-            #     print(f"sku_id={sku_id},count={count}")
-            #     carts[sku_id] = {
-            #         'count': count,
-            #         'selected': sku_id in selectd_ids
-            #     }
-            # pass
+            for btypes_sku_id in sku_id_counts.keys():
+                count = sku_id_counts[btypes_sku_id].decode()
+                sku_id = int(btypes_sku_id.decode())
+                selected = btypes_sku_id in selectd_ids
+                # print(f"sku_id={sku_id},count={count},selected={selected}")
+                carts[sku_id] = {'count': count, 'selected': selected}
         else:
             print(f"anonymous user")
 
@@ -365,6 +363,9 @@ class CartsView(View):
                 #3.未登录用户查询cookie
                 #3.0 解码,校验数据
                 #    如果为空返回{}
+                #3.1 获取skuid
+                #3.2 获取count
+                #3.3 获取状态
                 try:
                     carts = pickle.loads(base64.b64decode(cookie_carts))
                 except Exception as e:
@@ -376,20 +377,48 @@ class CartsView(View):
 
             else:
                 carts = {}
-            print(f"cookie_carts={carts}")
 
-            #3.1 获取skuid
-            #3.2 获取count
-            #3.3 获取状态
-            pass
+        print(f"cookie_carts={carts}")
 
         # 4.根据商品的skuid查询信息
-        #  4.1 校验skuid
-        #  #TODO:4.2 更新商品信息
-        #   4.3 查询价格和库存
-        #5.序列化
+        sku_ids = carts.keys()
+
+        # 可以遍历查询
+        # 也可以用 in
+        try:
+            #  4.1 TODO:校验sku_id,获取商品信息
+            # BUG:skus没有校验
+            skus = SKU.objects.filter(id__in=sku_ids)
+        except Exception as e:
+            print(f"get skus info error!!!")
+            return JsonResponse({'code': 0, 'errmsg': 'ok'})
+
+        print(f"query skus info success...")
+        print(f"skus={skus}")
+        cart_skus = []
+
+        #4.2 取出商品信息
+        for sku in skus:
+            price = int(sku.price)
+            #BUG:数量没有校验,而且存在空指针可能
+            count = int(carts[sku.id]['count'])
+            amount = price * count
+            cart_skus.append({
+                'id': sku.id,
+                'price': price,
+                'name': sku.name,
+                'default_image_url': sku.default_image.url,
+                #BUG:selected没有校验,而且存在空指针可能
+                'selected': carts[sku.id]['selected'],  #选中状态
+                'count': count,  # 数量 强制转换一下
+                'amount': amount  #总价格
+            })
+
+        print(f"get skus info success...")
+        print(f"cart_skus={cart_skus}")
         #6.返回数据
         return JsonResponse({
             'code': 0,
             'errmsg': 'ok',
+            'cart_skus': cart_skus,
         })
