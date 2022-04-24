@@ -1,9 +1,12 @@
+from cgi import print_arguments
 from select import select
+from xmlrpc.client import boolean
 
 import redis
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django_redis import get_redis_connection
+from requests import delete
 
 # Create your views here.
 """
@@ -94,6 +97,13 @@ from apps.goods.models import SKU
 
 def CheckSku_id(sku_id):
     try:
+        sku_id = int(sku_id)
+    except Exception as e:
+        return None
+    if sku_id < 0:
+        return None
+
+    try:
         sku = SKU.objects.get(id=sku_id)
     except Exception as e:
         return None
@@ -108,6 +118,14 @@ def CheckCount(count):
     if count < 0:
         return None
     return count
+
+
+def CheckSelected(selected):
+    try:
+        selected = bool(selected)
+    except Exception as e:
+        return None
+    return selected
 
 
 class CartsView(View):
@@ -422,3 +440,157 @@ class CartsView(View):
             'errmsg': 'ok',
             'cart_skus': cart_skus,
         })
+
+    #TODO:优化代码,这部分和post基本一样
+    def put(self, request):
+        #1.接收数据
+        #{"sku_id":3,"count":1}
+        body_dict = json.loads(request.body.decode())
+        print(f"put cart success...")
+        print(f"body_dict={body_dict}")
+
+        sku_id = body_dict.get('sku_id')
+        count = body_dict.get('count')
+        selected = body_dict.get('selected')
+
+        #2.验证数据
+        if not all([sku_id, count]):
+            print(f"post cart param error!!!")
+            return JsonResponse({'code': 400, 'errmsg': '请补全参数'})
+        print(f"post cart param success...")
+        print(f"sku_id={sku_id},count={count}")
+
+        #2.1 check sku_id
+        sku = CheckSku_id(sku_id=sku_id)
+        if sku is None:
+            print(f"check sku_id error!!!")
+            return JsonResponse({
+                'code': 400,
+                'errmsg': 'sku_id error!!!',
+            })
+
+        print(f"check sku_id success...")
+
+        #2.2 TODO:check count
+        count = CheckCount(count)
+        if count is None:
+            print(f"check count error!!!")
+            return JsonResponse({
+                'code': 400,
+                'errmsg': 'count error!!!',
+            })
+
+        print(f"check count success...")
+
+        #2.3 check selected
+        selected = CheckSelected(selected)
+        if count is None:
+            print(f"check selected error!!!")
+            return JsonResponse({
+                'code': 400,
+                'errmsg': 'selected error!!!',
+            })
+
+        print(f"check selected success...")
+
+        #3.判断用户的登录状态
+        user = request.user
+        if user.is_authenticated:
+            print(f"logined user opt...")
+
+            #3.登录用户保存redis
+            try:
+                #3.1 连接redis
+                redis_cli = get_redis_connection('carts')
+
+                #3.2 操作hash
+                redis_cli.hset(f'carts_{user.id}', sku_id, count)
+
+                #3.3 操作set
+                #有可能会被删除
+                if selected:
+                    redis_cli.sadd(f'selected_{user.id}', sku_id)
+                else:
+                    redis_cli.srem(f'selected_{user.id}', sku_id)
+
+                #3.4 返回响应
+            except Exception as e:
+                print(f"logined user carts put error!!!")
+                return JsonResponse({
+                    'code': 400,
+                    'errmsg': '加入购物车失败',
+                })
+
+            else:
+                print(f"logined user carts put success...")
+                return JsonResponse({
+                    'code': 0,
+                    'errmsg': 'ok',
+                    'cart_sku': {
+                        'count': count,
+                        'selected': selected
+                    }
+                })
+        else:
+            print(f"anoyoums user opt...")
+
+            #5.未登录用户保存cookie
+            # 5.0 先读取cookie数据
+            cookie_carts = request.COOKIES.get('carts')
+
+            if cookie_carts:
+                # 对加密的数据解密
+                try:
+                    carts = pickle.loads(base64.b64decode(cookie_carts))
+                except Exception as e:
+                    print(f"cookie_carts decode error!!!")
+                    return JsonResponse({
+                        'code': 0,
+                        'errmsg': 'cookie 错误!!!',
+                    })
+
+            else:
+                #5.1 先有cookie字典
+                carts = {}
+
+            print("decode cookie success...")
+            print(f"cookie_carts={carts}")
+
+            #6.更新数据
+            carts[sku_id] = {'count': count, 'selected': selected}
+
+            print("update cookie success...")
+            print(f"obj_carts={carts}")
+
+            #7.序列化
+
+            #7.1  dict ->bytes ->base64
+            cookie_carts = base64.b64encode(pickle.dumps(carts))
+
+            #7.2 设置cookie
+            response = JsonResponse({
+                'code': 0,
+                'errmsg': 'ok',
+                'cart_sku': {
+                    'count': count,
+                    'selected': selected
+                }
+            })
+
+            # cookie_carts=b'gASVIAAAAAAAAAB9lEsOfZQojAVjb3VudJRLZIwIc2VsZWN0ZWSUiHVzLg=='
+            response.set_cookie('carts',
+                                cookie_carts.decode(),
+                                max_age=3600 * 24)
+
+            #4.3 返回响应
+            return response
+
+    def delete(self, request):
+        response = JsonResponse({
+                'code': 0,
+                'errmsg': 'ok'
+                
+            })
+
+        #4.3 返回响应
+        return response
