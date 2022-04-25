@@ -6,8 +6,8 @@ import redis
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django_redis import get_redis_connection
-from requests import delete
 
+#TODO:用redis_pipline提高性能,购物车的全选
 # Create your views here.
 """
 1.  京东的网址 登录用户可以实现购物车，未登录用户可以实现购物车      v
@@ -95,6 +95,7 @@ from django.views import View
 from apps.goods.models import SKU
 
 
+# Check data type and sku_id in DB
 def CheckSku_id(sku_id):
     try:
         sku_id = int(sku_id)
@@ -107,7 +108,7 @@ def CheckSku_id(sku_id):
         sku = SKU.objects.get(id=sku_id)
     except Exception as e:
         return None
-    return sku
+    return sku_id
 
 
 def CheckCount(count):
@@ -185,8 +186,8 @@ class CartsView(View):
         print(f"sku_id={sku_id},count={count}")
 
         #2.1 check sku_id
-        sku = CheckSku_id(sku_id=sku_id)
-        if sku is None:
+        sku_id = CheckSku_id(sku_id=sku_id)
+        if sku_id is None:
             print(f"check sku_id error!!!")
             return JsonResponse({
                 'code': 400,
@@ -461,8 +462,8 @@ class CartsView(View):
         print(f"sku_id={sku_id},count={count}")
 
         #2.1 check sku_id
-        sku = CheckSku_id(sku_id=sku_id)
-        if sku is None:
+        sku_id = CheckSku_id(sku_id=sku_id)
+        if sku_id is None:
             print(f"check sku_id error!!!")
             return JsonResponse({
                 'code': 400,
@@ -585,12 +586,117 @@ class CartsView(View):
             #4.3 返回响应
             return response
 
+    """
+    前端:提交删除的sku_id
+    后端:
+      接收请求: 获取sku_id
+      业务逻辑: 登录用户则删除redis中的hash和set,未登录用户修改完skuid后修改cookie
+      响应: 返回0即可
+
+      路由:DELETE /carts/
+      步骤:
+            1.获取sku_id
+            2.校验sku_id
+            3.判断用户是否登录
+            4.登录用户
+                4.1 查看原来的hash是否存在sku_id
+                4.2 存在则删除,不存在那么抛出异常
+                4.3 查看原来的set是否存在sku_id
+                4.4 存在则删除,不存在那么抛出异常
+                4.5 返回结果
+            5.未登录用户
+                5.1 解码cookie
+                5.2 查看原来的cookie是否存在sku_id
+                5.3 存在则删除,不存在那么抛出异常
+                5.4 修改cookie
+                5.5 返回结果 
+    """
+
     def delete(self, request):
-        response = JsonResponse({
-                'code': 0,
-                'errmsg': 'ok'
-                
-            })
+        # 1.获取sku_id
+        body_dict = json.loads(request.body.decode())
+        sku_id = body_dict.get('sku_id')
+        print(f"DEL CARTS: get sku_id success...")
+        print(f"sku_id={sku_id}")
+
+        # 2.校验sku_id
+        sku_id = CheckSku_id(sku_id=sku_id)
+        print(f"DEL CARTS: checked sku_id success...")
+
+        # 3.判断用户是否登录
+        user = request.user
+        # 4.登录用户
+        if user.is_authenticated:
+            print(f"DEL CARTS: logined user opt...")
+            redis_cli = get_redis_connection('carts')
+
+            # 4.1 查看原来的hash是否存在sku_id
+            try:
+                ret = redis_cli.hget(f'carts_{user.id}', sku_id)
+            # 4.2 不存在那么抛出异常
+            except Exception as e:
+                print(f"DEL CARTS: query sku_in in redis error!!!")
+                return JsonResponse({
+                    'code': 400,
+                    'errmsg': 'sku_id not found!!!',
+                })
+
+            print(f"DEL CARTS: query sku_in in redis success...")
+
+            # 4.3 删除hash和set
+            try:
+                redis_cli.hdel(f'carts_{user.id}', sku_id)
+                redis_cli.srem(f'selected_{user.id}', sku_id)
+            except Exception as e:
+                print(f"DEL CARTS: del sku_in in redis error!!!")
+                return JsonResponse({
+                    'code': 400,
+                    'errmsg': 'del sku_id in redis error !!!',
+                })
+
+            print(f"DEL CARTS: del sku_in in redis success...")
+
+            # 4.4 返回结果
+            response = JsonResponse({'code': 0, 'errmsg': 'ok'})
+        else:
+            print(f"DEL CARTS: anoyoums user opt...")
+            # 5.未登录用户
+            #     5.1 解码cookie
+            cookie_carts = request.COOKIES.get('carts')
+            if cookie_carts:
+                # 对加密的数据解密
+                try:
+                    carts = pickle.loads(base64.b64decode(cookie_carts))
+                except Exception as e:
+                    print(f"DEL CARTS: cookie_carts decode error!!!")
+                    return JsonResponse({
+                        'code': 0,
+                        'errmsg': 'cookie 错误!!!',
+                    })
+
+            else:
+                carts = {}
+            print(f"DEL CARTS: decoded cookie success...")
+            print(f"DEL CARTS: cookie_carts={carts}")
+
+            #     5.2 查看原来的cookie是否存在sku_id
+            if sku_id in carts:
+                #     5.3 存在则删除,不存在那么抛出异常
+                del carts[sku_id]
+            else:
+                return JsonResponse({'code': 400, 'errmsg': 'sku_id error!!!'})
+
+            print(f"DEL CARTS: del cookie_carts_OBJ success...")
+            print(f"DEL CARTS: cookie_carts={carts}")
+
+            #     5.4 修改cookie
+            #     5.5 返回结果
+            cookie_carts = base64.b64encode(pickle.dumps(carts))
+            response = JsonResponse({'code': 0, 'errmsg': 'ok'})
+            response.set_cookie('carts',
+                                cookie_carts.decode(),
+                                max_age=3600 * 24)
+            print(f"DEL CARTS: del cookie_carts success...")
 
         #4.3 返回响应
         return response
