@@ -92,7 +92,7 @@ from apps.goods.models import SKU
 
 
 # Check data type and sku_id in DB
-def CheckSku_id(sku_id):
+def checkSku_id(sku_id):
     try:
         sku_id = int(sku_id)
     except Exception as e:
@@ -107,7 +107,7 @@ def CheckSku_id(sku_id):
     return sku_id
 
 
-def CheckCount(count):
+def checkCount(count):
     try:
         count = int(count)
     except Exception as e:
@@ -117,12 +117,26 @@ def CheckCount(count):
     return count
 
 
-def CheckSelected(selected):
+def checkSelected(selected):
     try:
         selected = bool(selected)
     except Exception as e:
         return None
     return selected
+
+
+# decode cookie carts to carts obj
+def cookieCarts2Carts(request):
+    cookie_carts = request.COOKIES.get('carts')
+    if cookie_carts:
+        # 对加密的数据解密
+        try:
+            carts = pickle.loads(base64.b64decode(cookie_carts))
+        except Exception as e:
+            return None
+    else:
+        carts = {}
+    return carts
 
 
 class CartsView(View):
@@ -182,7 +196,7 @@ class CartsView(View):
         print(f"sku_id={sku_id},count={count}")
 
         #2.1 check sku_id
-        sku_id = CheckSku_id(sku_id=sku_id)
+        sku_id = checkSku_id(sku_id=sku_id)
         if sku_id is None:
             print(f"check sku_id error!!!")
             return JsonResponse({
@@ -193,7 +207,7 @@ class CartsView(View):
         print(f"check sku_id success...")
 
         #2.2 TODO:check count
-        count = CheckCount(count)
+        count = checkCount(count)
         if count is None:
             print(f"check count error!!!")
             return JsonResponse({
@@ -261,22 +275,15 @@ class CartsView(View):
             #5.未登录用户保存cookie
             # {16： {count:3,selected:True}}
             # 5.0 先读取cookie数据
-            cookie_carts = request.COOKIES.get('carts')
+            carts = cookieCarts2Carts(request=request)
 
-            if cookie_carts:
-                # 对加密的数据解密
-                try:
-                    carts = pickle.loads(base64.b64decode(cookie_carts))
-                except Exception as e:
-                    print(f"cookie_carts decode error!!!")
-                    return JsonResponse({
-                        'code': 0,
-                        'errmsg': 'cookie 错误!!!',
-                    })
+            if carts is None:
+                print(f"cookie_carts decode error!!!")
+                return JsonResponse({
+                    'code': 0,
+                    'errmsg': 'cookie 错误!!!',
+                })
 
-            else:
-                #5.1 先有cookie字典
-                carts = {}
             print(f"cookie_carts={carts}")
 
             # 判断新增的商品 有没有在购物车里
@@ -375,26 +382,14 @@ class CartsView(View):
         else:
             print(f"anonymous user")
 
-            cookie_carts = request.COOKIES.get('carts')
+            carts = cookieCarts2Carts(request=request)
 
-            if cookie_carts:
-                #3.未登录用户查询cookie
-                #3.0 解码,校验数据
-                #    如果为空返回{}
-                #3.1 获取skuid
-                #3.2 获取count
-                #3.3 获取状态
-                try:
-                    carts = pickle.loads(base64.b64decode(cookie_carts))
-                except Exception as e:
-                    print(f"cookie_carts decode error!!!")
-                    return JsonResponse({
-                        'code': 0,
-                        'errmsg': 'cookie 错误!!!',
-                    })
-
-            else:
-                carts = {}
+            if carts is None:
+                print(f"cookie_carts decode error!!!")
+                return JsonResponse({
+                    'code': 400,
+                    'errmsg': 'cookie 错误!!!',
+                })
 
         print(f"cookie_carts={carts}")
 
@@ -461,7 +456,7 @@ class CartsView(View):
         print(f"sku_id={sku_id},count={count}")
 
         #2.1 check sku_id
-        sku_id = CheckSku_id(sku_id=sku_id)
+        sku_id = checkSku_id(sku_id=sku_id)
         if sku_id is None:
             print(f"check sku_id error!!!")
             return JsonResponse({
@@ -472,7 +467,7 @@ class CartsView(View):
         print(f"check sku_id success...")
 
         #2.2 TODO:check count
-        count = CheckCount(count)
+        count = checkCount(count)
         if count is None:
             print(f"check count error!!!")
             return JsonResponse({
@@ -483,8 +478,8 @@ class CartsView(View):
         print(f"check count success...")
 
         #2.3 check selected
-        selected = CheckSelected(selected)
-        if count is None:
+        selected = checkSelected(selected)
+        if selected is None:
             print(f"check selected error!!!")
             return JsonResponse({
                 'code': 400,
@@ -538,22 +533,14 @@ class CartsView(View):
 
             #5.未登录用户保存cookie
             # 5.0 先读取cookie数据
-            cookie_carts = request.COOKIES.get('carts')
+            carts = cookieCarts2Carts(request=request)
 
-            if cookie_carts:
-                # 对加密的数据解密
-                try:
-                    carts = pickle.loads(base64.b64decode(cookie_carts))
-                except Exception as e:
-                    print(f"cookie_carts decode error!!!")
-                    return JsonResponse({
-                        'code': 0,
-                        'errmsg': 'cookie 错误!!!',
-                    })
-
-            else:
-                #5.1 先有cookie字典
-                carts = {}
+            if carts is None:
+                print(f"cookie_carts decode error!!!")
+                return JsonResponse({
+                    'code': 0,
+                    'errmsg': 'cookie 错误!!!',
+                })
 
             print("decode cookie success...")
             print(f"cookie_carts={carts}")
@@ -621,7 +608,7 @@ class CartsView(View):
         print(f"sku_id={sku_id}")
 
         # 2.校验sku_id
-        sku_id = CheckSku_id(sku_id=sku_id)
+        sku_id = checkSku_id(sku_id=sku_id)
         print(f"DEL CARTS: checked sku_id success...")
 
         # 3.判断用户是否登录
@@ -663,20 +650,14 @@ class CartsView(View):
             print(f"DEL CARTS: anoyoums user opt...")
             # 5.未登录用户
             #     5.1 解码cookie
-            cookie_carts = request.COOKIES.get('carts')
-            if cookie_carts:
-                # 对加密的数据解密
-                try:
-                    carts = pickle.loads(base64.b64decode(cookie_carts))
-                except Exception as e:
-                    print(f"DEL CARTS: cookie_carts decode error!!!")
-                    return JsonResponse({
-                        'code': 0,
-                        'errmsg': 'cookie 错误!!!',
-                    })
+            carts = cookieCarts2Carts(request=request)
+            if carts is None:
+                print(f"DEL CARTS: cookie_carts decode error!!!")
+                return JsonResponse({
+                    'code': 400,
+                    'errmsg': 'cookie 错误!!!',
+                })
 
-            else:
-                carts = {}
             print(f"DEL CARTS: decoded cookie success...")
             print(f"DEL CARTS: cookie_carts={carts}")
 

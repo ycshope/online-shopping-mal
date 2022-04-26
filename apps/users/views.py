@@ -154,7 +154,9 @@ class LoginView(View):
         print(request.session.items())
 
         #3.响应:返回JSON数据0成功,400失败
-        response = JsonResponse({'code': 0, 'errmsg': 'ok'})
+        # 合并购物车
+        from apps.carts.utils import mergeCookie2Redis
+        response = mergeCookie2Redis(request=request)
 
         #cookie设置用户名
         response.set_cookie('username', username)
