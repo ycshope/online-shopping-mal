@@ -1,13 +1,9 @@
-from cgi import print_arguments
-from select import select
-from xmlrpc.client import boolean
-
 import redis
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django_redis import get_redis_connection
 
-#TODO:用redis_pipline提高性能,购物车的全选
+#TODO:购物车的全选
 # Create your views here.
 """
 1.  京东的网址 登录用户可以实现购物车，未登录用户可以实现购物车      v
@@ -228,12 +224,15 @@ class CartsView(View):
                         1:10
                 '''
                 redis_cli = get_redis_connection('carts')
+
+                pipeline = redis_cli.pipeline()
                 #4.2 操作hash
-                redis_cli.hset(f'carts_{user.id}', sku_id, count)
+                pipeline.hset(f'carts_{user.id}', sku_id, count)
 
                 #4.3 操作set
-                redis_cli.sadd(f'selected_{user.id}', sku_id)
+                pipeline.sadd(f'selected_{user.id}', sku_id)
                 #4.4 返回响应
+                pipeline.execute()
             except Exception as e:
                 print(f"logined user carts add error!!!")
                 return JsonResponse({
@@ -350,7 +349,7 @@ class CartsView(View):
         user = request.user
         if user.is_authenticated:
             print(f"get user:{user} carts...")
-
+            #TODO:pipeline优化
             redis_cli = get_redis_connection('carts')
 
             #         2.用户登录查询redis
@@ -504,16 +503,18 @@ class CartsView(View):
                 #3.1 连接redis
                 redis_cli = get_redis_connection('carts')
 
+                pipeline = redis_cli.pipeline()
                 #3.2 操作hash
-                redis_cli.hset(f'carts_{user.id}', sku_id, count)
+                pipeline.hset(f'carts_{user.id}', sku_id, count)
 
                 #3.3 操作set
                 #有可能会被删除
                 if selected:
-                    redis_cli.sadd(f'selected_{user.id}', sku_id)
+                    pipeline.sadd(f'selected_{user.id}', sku_id)
                 else:
-                    redis_cli.srem(f'selected_{user.id}', sku_id)
+                    pipeline.srem(f'selected_{user.id}', sku_id)
 
+                pipeline.execute()
                 #3.4 返回响应
             except Exception as e:
                 print(f"logined user carts put error!!!")
@@ -629,10 +630,10 @@ class CartsView(View):
         if user.is_authenticated:
             print(f"DEL CARTS: logined user opt...")
             redis_cli = get_redis_connection('carts')
-
+            pipeline = redis_cli.pipeline()
             # 4.1 查看原来的hash是否存在sku_id
             try:
-                ret = redis_cli.hget(f'carts_{user.id}', sku_id)
+                ret = pipeline.hget(f'carts_{user.id}', sku_id)
             # 4.2 不存在那么抛出异常
             except Exception as e:
                 print(f"DEL CARTS: query sku_in in redis error!!!")
@@ -645,8 +646,8 @@ class CartsView(View):
 
             # 4.3 删除hash和set
             try:
-                redis_cli.hdel(f'carts_{user.id}', sku_id)
-                redis_cli.srem(f'selected_{user.id}', sku_id)
+                pipeline.hdel(f'carts_{user.id}', sku_id)
+                pipeline.srem(f'selected_{user.id}', sku_id)
             except Exception as e:
                 print(f"DEL CARTS: del sku_in in redis error!!!")
                 return JsonResponse({
@@ -655,7 +656,7 @@ class CartsView(View):
                 })
 
             print(f"DEL CARTS: del sku_in in redis success...")
-
+            pipeline.execute()
             # 4.4 返回结果
             response = JsonResponse({'code': 0, 'errmsg': 'ok'})
         else:
