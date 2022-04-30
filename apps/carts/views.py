@@ -139,6 +139,7 @@ def cookieCarts2Carts(request):
     return carts
 
 
+#TODO:当server重启后购物车内容会消失,需要用mysql+redis的方法解决
 class CartsView(View):
     """
     前端：
@@ -356,17 +357,17 @@ class CartsView(View):
         user = request.user
         if user.is_authenticated:
             print(f"get user:{user} carts...")
-            #TODO:pipeline优化
             redis_cli = get_redis_connection('carts')
-
+            pipeline = redis_cli.pipeline()
             #         2.用户登录查询redis
             #             2.1 获取购物车信息 hash
-            sku_id_counts = redis_cli.hgetall(f'carts_{user.id}')
+            pipeline.hgetall(f'carts_{user.id}')
             # {b'5': b'10', b'8': b'3'}   解读=> {sku_id1:count1,sku_id2:count2...}
             # print(f"sku_id_counts={sku_id_counts}")
 
             #             2.2 获取选中信息 set
-            selectd_ids = redis_cli.smembers(f'selected_{user.id}')
+            pipeline.smembers(f'selected_{user.id}')
+            sku_id_counts, selectd_ids = pipeline.execute()
             # {b'5', b'8'}
             # print(f"selectd_ids={selectd_ids}")
 
@@ -436,7 +437,6 @@ class CartsView(View):
             'cart_skus': cart_skus,
         })
 
-    #TODO:优化代码,这部分和post基本一样
     def put(self, request):
         #1.接收数据
         #{"sku_id":3,"count":1}

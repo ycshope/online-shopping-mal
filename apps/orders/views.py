@@ -353,12 +353,12 @@ class OrderCommitView(LoginRequiredJSONMixin, View):
                     return JsonResponse({'code': 400, 'errmsg': '库存数量不足'})
 
                 #       2.8 如果充足，则库存减少，销量增加
-                # 模拟高并发场景
                 oldStock = sku.stock
                 newStock = sku.stock - count
                 newSales = sku.sales + count
-                from time import sleep
-                sleep(7)
+                # 模拟高并发场景
+                # from time import sleep
+                # sleep(7)
 
                 #乐观锁
                 res = SKU.objects.filter(id=sku_id,
@@ -389,7 +389,7 @@ class OrderCommitView(LoginRequiredJSONMixin, View):
                 print('OrderCommitView.POST:OrderGoods create success...')
                 print(
                     f'OrderCommitView.POST:order_goods_obj={order_goods_obj}')
-                #   4.将redis中选中的商品信息移除出去
+                #      TODO:4.将redis中选中的商品信息移除出去
 
                 order_base_obj.save()
 
