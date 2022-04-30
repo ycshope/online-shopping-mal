@@ -13,7 +13,7 @@ services:
       MYSQL_USER: meiduo
       MYSQL_PASSWORD: meiduo
     ports:
-      - "3306:3306"
+      - "33060:3306"
 
   redis:
     image: redis
