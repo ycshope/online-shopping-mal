@@ -16,4 +16,6 @@ fdfs/tracker/data.tar.gz
 fdfs/tracker/data/*
 fdfs/tracker/log/*
 
+#keys
+*.pem
 #need verifications.view 
