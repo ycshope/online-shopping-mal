@@ -2,10 +2,16 @@ version: "3.9"
 
 services:
   db:
-    image: mysql
+    image: mysql:8.0.26
     command: --default-authentication-plugin=mysql_native_password
     volumes:
-      - ./db_data:/var/lib/mysql
+      #a bind mount 
+      - type: bind
+        source: ./db_data
+        target: /var/lib/mysql
+      - type: bind
+        source: ./db_conf
+        target: /etc/mysql/conf.d
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -16,9 +22,7 @@ services:
       - "33060:3306"
 
   redis:
-    image: redis
-    # ports:
-    #   - "6379:6379"
+    image: redis:6.2.5
 
   web:
     build: .
@@ -32,29 +36,29 @@ services:
       - redis
       # - fdfs-worker
 
-  #fastdfs as file storage system
-  # fdfs-tracker:
-  #   image: delron/fastdfs
-  #   command: tracker
-  #   volumes:
-  #     - ./fdfs/tracker:/var/fdfs
-  #   restart: always
+      #fastdfs as file storage system
+      # fdfs-tracker:
+      #   image: delron/fastdfs
+      #   command: tracker
+      #   volumes:
+      #     - ./fdfs/tracker:/var/fdfs
+      #   restart: always
 
-  # fdfs-worker:
-  #   image: delron/fastdfs
-  #   command: storage
-  #   volumes:
-  #     - ./fdfs/storage:/var/fdfs
-  #   environment:
-  #     TRACKER_SERVER: meiduo-fdfs-tracker-1:22122
-  #     GROUP_NAME: group1
-  #   restart: always
-  #   depends_on:
-  #     - fdfs-tracker
-    # ports:
-    #   - "8888:8888"
+      # fdfs-worker:
+      #   image: delron/fastdfs
+      #   command: storage
+      #   volumes:
+      #     - ./fdfs/storage:/var/fdfs
+      #   environment:
+      #     TRACKER_SERVER: meiduo-fdfs-tracker-1:22122
+      #     GROUP_NAME: group1
+      #   restart: always
+      #   depends_on:
+      #     - fdfs-tracker
+      # ports:
+      #   - "8888:8888"
 
-  #Elasticsearch
+      #Elasticsearch
   elasticsearch:
     image: delron/elasticsearch-ik:2.4.6-1.0
     # volumes:
