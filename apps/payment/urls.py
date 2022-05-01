@@ -20,6 +20,7 @@ from apps.payment.views import PaymentStatusView, PayUrlView
 
 # id需要转换器
 urlpatterns = [
+    #BUG:路由匹配应该需要一个转换器
     #路由匹配的顺序性, payment/123/不符合1才走payment/status
     #但是 payment/status?xxxx符合payment/<order_id>/
     path('payment/status/', PaymentStatusView.as_view()),
