@@ -33,9 +33,9 @@ from django.views import View
 from meiduo.settings import (ALIPAY_APPID, ALIPAY_DEBUG,
                              ALIPAY_PUBLIC_KEY_PATH, ALIPAY_RETURN_URL,
                              ALIPAY_URL, APP_PRIVATE_KEY_PATH)
+from utils.view import LoginRequiredJSONMixin
 
 from apps.orders.models import OrderInfo
-from utils.view import LoginRequiredJSONMixin
 
 
 #转换器确定是32位的数字后,这里只负责从数据库获取
@@ -93,14 +93,19 @@ class PayUrlView(LoginRequiredJSONMixin, View):
         print(f"PayUrlView.GET:getPayment Keys success...")
 
         # 4. 创建alipay实例
-        alipay = AliPay(
-            appid=ALIPAY_APPID,
-            app_notify_url=None,  # 默认回调url
-            app_private_key_string=app_private_key_string,
-            alipay_public_key_string=alipay_public_key_string,
-            sign_type="RSA2",
-            debug=ALIPAY_DEBUG,  # 上线则改为False , 沙箱True
-        )
+        try:
+            alipay = AliPay(
+                appid=ALIPAY_APPID,
+                app_notify_url=None,  # 默认回调url
+                app_private_key_string=app_private_key_string,
+                alipay_public_key_string=alipay_public_key_string,
+                sign_type="RSA2",
+                debug=ALIPAY_DEBUG,  # 上线则改为False , 沙箱True
+            )
+        except Exception as e:
+            print("PayUrlView.GET:create alipayObj error!!!")
+            return JsonResponse({'code': 400, 'errmsg': '生成跳转连接失败'})
+        print("PayUrlView.GET:create alipayObj success...")
 
         # 页面接口示例：alipay.trade.page.pay
         try:
@@ -121,7 +126,6 @@ class PayUrlView(LoginRequiredJSONMixin, View):
         print("PayUrlView.GET:get alipay.trade.page.pay url success...")
         print(f"PayUrlView.GET:alipay_url={alipay_url}")
 
-        #验签出错,可能是证书过期了
         return JsonResponse({
             'code': 0,
             'errmsg': 'ok',
