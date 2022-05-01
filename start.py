@@ -30,7 +30,7 @@ def depProect():
     #每次配置文件迁移完等待一段事件后再重启web,BUG:每次重启都会有点问题
     # os.system("docker exec meiduo-web-1 bash -c 'sleep 5s'")
 
-    #数据迁移
+    #数据迁移<----这里估计问题很多
     os.system(
         'docker restart meiduo-web-1 && docker exec meiduo-web-1 bash -c "python manage.py makemigrations && python manage.py migrate"'
     )
