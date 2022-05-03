@@ -2,6 +2,7 @@ import imp
 
 from rest_framework import serializers
 
+from apps.areas.serializers import AreaSerializers
 from apps.users.models import Address, User
 
 '''
@@ -16,23 +17,27 @@ data=序列化器名(instance=obj)
 
 
 class UserSerializers(serializers.Serializer):
-    mobile = serializers.CharField()
-    email = serializers.BooleanField()
+    # mobile = serializers.CharField()
+    # email = serializers.BooleanField()
     # 外键字段的第一种定义方式
     # 如果我们定义的序列化器外键字段类型为IntegerField
     # 那么,我们定义的序列化器字段名必须和  数据库种的外键字段名一直
-    default_address = serializers.IntegerField()
+    # default_address = serializers.IntegerField()
+    id=serializers.IntegerField()
 
-# The serializer field might be named incorrectly and not match any attribute or key on the `Address` instance.
-# Original exception text was: 'Address' object has no attribute 'required'
+
 class AddressSerializers(serializers.Serializer):
+    user = UserSerializers()
     title = serializers.CharField()
-    required = serializers.CharField()
+    receiver = serializers.CharField()
+    province_id = serializers.IntegerField()
+    city_id = serializers.IntegerField()
+    district_id = serializers.IntegerField()
     place = serializers.CharField()
     mobile = serializers.CharField()
     tel = serializers.CharField()
     email = serializers.CharField()
-    is_deleted = serializers.BooleanField()
+    # is_deleted = serializers.BooleanField()
 
     # 外键字段的第二种定义方式
     # 如果我们期望的外键的key就是模型字段的名字,那么PrimaryKeyRelatedField就可以获取到关联模型的id值
@@ -47,6 +52,3 @@ class AddressSerializers(serializers.Serializer):
     # province = serializers.PrimaryKeyRelatedField(read_only=True)
     # city = serializers.PrimaryKeyRelatedField(read_only=True)
     # district = serializers.PrimaryKeyRelatedField(read_only=True)
-    province_id = serializers.CharField()
-    city_id = serializers.CharField()
-    district_id = serializers.CharField()

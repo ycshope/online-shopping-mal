@@ -1,11 +1,14 @@
 import json
 import re
+from multiprocessing import managers
 
 from django.http import JsonResponse
 # Create your views here.
 from django.views import View
 
 from apps.users.models import Address, User
+from apps.users.serializers import AddressSerializers
+from utils.view import LoginRequiredJSONMixin
 
 
 def checkPassword(password) -> bool:
@@ -203,6 +206,7 @@ class LoginView(View):
             login(request, user)
         except Exception as e:
             print(f"LoginView.post: login error!!!")
+            return JsonResponse({'code': 400, 'errmsg': '登录失败,请重新尝试'})
 
         print(f"LoginView.post: login success...")
 
@@ -241,9 +245,6 @@ class LogoutView(LoginRequiredJSONMixin, View):
         response.delete_cookie('username')
 
         return response
-
-
-from utils.view import LoginRequiredJSONMixin
 
 
 class CenterView(LoginRequiredJSONMixin, View):
@@ -496,9 +497,12 @@ class AddressView(LoginRequiredJSONMixin, View):
             "tel": address_obj.tel,
             "email": address_obj.email
         } for address_obj in address_list_obj]
-        print(
-            f"AddressView.get: convert address list obj to address list dict success..."
-        )
+        # test_address_list_dict = AddressSerializers(instance=address_list_obj,
+        #                                             many=True)
+
+        print("AddressView.get: AddressSerializers success...")
+        # print(f"test_address_list_dict={json.dumps(test_address_list_dict.data)}")
+        print(f"address_list_dict={address_list_dict}")
 
         #3.返回响应
         return JsonResponse({
