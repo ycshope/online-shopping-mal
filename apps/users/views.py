@@ -501,7 +501,7 @@ class AddressView(LoginRequiredJSONMixin, View):
         #                                             many=True)
 
         print("AddressView.get: AddressSerializers success...")
-        # print(f"test_address_list_dict={json.dumps(test_address_list_dict.data)}")
+        # print(f"test_address_list_dict={test_address_list_dict.data.__dir__}")
         print(f"address_list_dict={address_list_dict}")
 
         #3.返回响应
