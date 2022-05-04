@@ -1,8 +1,8 @@
-Django==3.2.5
+Django==3.2.13
 PyMySQL==1.0.2
 mysqlclient==2.0.3
 django-redis==4.12.1
-celery==5.0.0
+celery==5.2.2
 django-cors-headers==3.11.0
 pillow==9.0.1
 QQLoginTool==0.3.0
@@ -13,4 +13,4 @@ elasticsearch==2.4.1
 django-crontab==0.7.1
 python-alipay-sdk==3.0.4
 uwsgi==2.0.20
-djangorestframework==3.7.7
+djangorestframework==3.11.2
