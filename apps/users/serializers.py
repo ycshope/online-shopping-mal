@@ -110,6 +110,9 @@ class UserModelSerializers(serializers.ModelSerializer):
             # 为了防止篡改,仅序列化时输出,属性为read-only
             'id': {
                 'read_only': True
+            },
+            'email_active': {
+                'read_only': True
             }
         }
 
