@@ -1,10 +1,15 @@
 import json
 import re
-from multiprocessing import managers
 
 from django.http import JsonResponse
 # Create your views here.
 from django.views import View
+from requests import Response
+from rest_framework.generics import (GenericAPIView, ListCreateAPIView,
+                                     RetrieveAPIView)
+from rest_framework.mixins import (CreateModelMixin, ListModelMixin,
+                                   RetrieveModelMixin)
+from rest_framework.views import APIView
 
 from apps.users.models import Address, User
 from apps.users.serializers import AddressSerializers
@@ -52,7 +57,155 @@ def checkBool(booldata) -> bool:
         return False
 
 
-#TODO:测试修改后的userview,（all）
+# from rest_framework.request import Request
+from rest_framework.response import Response
+
+from apps.users.serializers import UserModelSerializers
+
+
+# 一级视图
+class TestAPIView(APIView):
+    def get(self, request):
+        # django -- request.GET
+        # drf -- request.query_params
+        query_params = request.query_params
+        # id = query_params.data
+        user_obj = User.objects.get(id=5)
+        serializer = UserModelSerializers(instance=user_obj)
+        print(f"user_dict={serializer.data}")
+
+        # DRF默认返回类型就是json数据
+        return Response(serializer.data)
+
+    def post(self, request):
+        # django --- request.POST(form)  request.body(JSON)
+        # DRF --- request.data
+        # 1.接收参数,获取数据
+        data = request.data
+
+        # 2.验证参数,序列化器解决
+        serializer = UserModelSerializers(data=data)
+        if serializer.is_valid() is False:
+            return Response({'msg': 'data bad!!!'})
+
+        # 3.保存数据
+        serializer.save()
+
+        # 4.返回响应
+        return Response(serializer.data)
+
+
+"""
+GenericAPIView 比 APIView 拓展了一些属性和方法
+
+属性
+    queryset    设置查询结果集
+    serializer_class    设置序列化器
+    lookup_field    设置查询指定数据的关键字
+
+方法
+    get_queryset()  获取查询结果集
+    get_serializer()    获取序列化实例
+    get_object()    获取指定的数据
+"""
+
+
+# 二级视图
+class TestGenericAPIView(GenericAPIView):
+    # 查询结果集
+    queryset = User.objects.get(id=5)
+    # 序列化器
+    serializer_class = UserModelSerializers
+
+    def get(self, request):
+        # 1.查询数据
+        # user=User.objects.get(id=5)
+        user = self.get_queryset()
+
+        # 2.将结果进行序列化
+        # serializer = UserModelSerializers(data=data)
+        serializer = self.get_serializer(instance=user)
+
+        # 3.返回结果
+        return Response(serializer.data)
+
+    def post(self, request):
+        # 1.接收参数,获取数据
+        data = request.data
+
+        # 2.验证参数,序列化器解决
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid() is False:
+            return Response({'msg': 'data bad!!!'})
+
+        # 3.保存数据
+        serializer.save()
+
+        # 4.返回响应
+        return Response(serializer.data)
+
+
+class TestGenericDetailsAPIView(GenericAPIView):
+    # 查询结果集
+    queryset = User.objects.all()
+    # 序列化器
+    serializer_class = UserModelSerializers
+
+    # 查询关键字必须为pk,或者通过 lookup_field修改
+    def get(self, request, pk):
+        # 1.查询指定数据
+        # user = User.objects.get(id=pk)
+        # user = self.queryset.filter(id=pk)
+        # user = self.get_queryset().filter(id=pk)
+        user = self.get_object()
+
+        # 2.将结果进行序列化
+        serializer = self.get_serializer(instance=user)
+
+        # 3.返回响应
+        return Response(serializer.data)
+
+
+# 二级视图 +Mixin
+class TestGenericMixinsAPIView(ListModelMixin, CreateModelMixin,
+                               GenericAPIView):
+    # 查询结果集 <---一定要是集合
+    queryset = User.objects.all()
+    # 序列化器
+    serializer_class = UserModelSerializers
+
+    def get(self, request):
+        return self.list(request)
+
+    def post(self, request):
+        return self.create(request)
+
+
+class TestDetailGenericMixinsAPIView(RetrieveModelMixin, GenericAPIView):
+    # 查询结果集 <---一定要是集合
+    queryset = User.objects.all()
+    # 序列化器
+    serializer_class = UserModelSerializers
+
+    # 查询关键字必须为pk,或者通过 lookup_field修改
+    def get(self, request, pk):
+        return self.retrieve(request)
+
+
+# 三级视图 TestGenericMaxAPIView，RetrieveAPIView
+class TestGenericMaxAPIView(ListCreateAPIView):
+    # 查询结果集 <---一定要是集合
+    queryset = User.objects.all()
+    # 序列化器
+    serializer_class = UserModelSerializers
+
+class TestDetailGenericMaxAPIView(RetrieveAPIView):
+    # 查询结果集 <---一定要是集合
+    queryset = User.objects.all()
+    # 序列化器
+    serializer_class = UserModelSerializers
+
+# TODO:测试修改后的userview,（all）
 class UsernameCountView(View):
     def get(self, request, username):
         count = User.objects.filter(username=username).count()
