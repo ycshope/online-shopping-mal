@@ -5,11 +5,20 @@ from django.http import JsonResponse
 # Create your views here.
 from django.views import View
 from requests import Response
+# DRF 认证的三种方式
+from rest_framework.authentication import (BasicAuthentication,
+                                           SessionAuthentication,
+                                           TokenAuthentication)
 from rest_framework.generics import (GenericAPIView, ListCreateAPIView,
                                      RetrieveAPIView)
 from rest_framework.mixins import (CreateModelMixin, ListModelMixin,
                                    RetrieveModelMixin)
+# DRF分页的两种方法
+from rest_framework.pagination import (LimitOffsetPagination,
+                                       PageNumberPagination)
+from rest_framework.permissions import AllowAny, IsAuthenticated  # DRF权限设置
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from apps.users.models import Address, User
 from apps.users.serializers import AddressSerializers
@@ -199,11 +208,44 @@ class TestGenericMaxAPIView(ListCreateAPIView):
     # 序列化器
     serializer_class = UserModelSerializers
 
+
 class TestDetailGenericMaxAPIView(RetrieveAPIView):
     # 查询结果集 <---一定要是集合
     queryset = User.objects.all()
     # 序列化器
     serializer_class = UserModelSerializers
+
+
+class PageNum(PageNumberPagination):
+    # 开启分页的开关
+    page_size = 5
+    # 设置查询字符串的key相当于开关,只有设置了这个值,一页多少条记录才生效,url参数
+    page_size_query_param = 'ps'
+    # 一页最多多少条记录(性能控制)
+    max_page_size = 20
+
+
+# 终极版本:ViewSet
+class TestModelViewSet(ModelViewSet):
+    # 权限设置
+    # permission_classes = [AllowAny]
+    # permission_classes = [IsAuthenticated]
+
+    # 认证设置
+    # authentication_classess = [BasicAuthentication]
+    # authentication_classess = [SessionAuthentication]
+    # authentication_classess = [TokenAuthentication]
+
+    #单独设置分页类
+    # 只有GenericAPIView和子类可以使用,APIView,ViewSet不能使用
+    # pagination_class = LimitOffsetPagination
+    pagination_class = PageNum
+
+    # 查询结果集 <---一定要是集合
+    queryset = User.objects.all()
+    # 序列化器
+    serializer_class = UserModelSerializers
+
 
 # TODO:测试修改后的userview,（all）
 class UsernameCountView(View):
