@@ -1,4 +1,4 @@
-Django==3.2.13
+Django==3.2.15
 PyMySQL==1.0.2
 mysqlclient==2.0.3
 django-redis==4.12.1
